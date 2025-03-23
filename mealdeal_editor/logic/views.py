@@ -5,24 +5,43 @@ from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import User
+from django.utils import timezone
+from .models import InvitationCode
 
 import firebase_admin.auth as firebase_auth
 
 # Create your views here.
 
 class FirebaseTokenView(APIView):
-    #todo: add invitatoin code processing
     def post(self, request):
         firebase_id_token = request.data.get("firebase_id_token")
+        invitation_code = request.data.get("invitation_code")
+        
         if not firebase_id_token:
             return Response({"error": "Firebase ID token is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not invitation_code:
+            return Response({"error": "Invitation code is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
         try:
+            # Verify the invitation code first
+            code_obj = InvitationCode.objects.filter(code=invitation_code, is_used=False).first()
+            if not code_obj:
+                return Response({"error": "Invalid or already used invitation code"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Proceed with Firebase authentication
             decoded_token = firebase_auth.verify_id_token(firebase_id_token)
             uid = decoded_token["uid"]
             email = decoded_token.get("email", "")
 
             user, created = User.objects.get_or_create(username=email, email=email)
             refresh = RefreshToken.for_user(user)
+
+            # Mark the invitation code as used
+            code_obj.is_used = True
+            code_obj.used_at = timezone.now()
+            code_obj.used_by = email
+            code_obj.save()
 
             response = Response({"message": "Authenticated via Firebase"}, status=status.HTTP_200_OK)
 
@@ -33,7 +52,7 @@ class FirebaseTokenView(APIView):
             return response
 
         except Exception as e:
-            return Response({"error": "Invalid Firebase ID token"}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({"error": f"Registration failed: {str(e)}"}, status=status.HTTP_401_UNAUTHORIZED)
 
 class FirebaseLoginView(APIView):
     def post(self, request):
@@ -93,8 +112,18 @@ class PartnerProfileView(APIView):
     def get(self, request):
         user = request.user
         return Response({"message": f"Partner profile retrieved for {user.email}"}, status=status.HTTP_200_OK)
-            
-            
-            
-            
 
+class VerifyInvitationCodeView(APIView): 
+    def post(self, request):
+        invitation_code = request.data.get("invitation_code")
+        if not invitation_code:
+            return Response({"error": "Invitation code is required"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            # Check if the invitation code exists and is not used
+            code_obj = InvitationCode.objects.filter(code=invitation_code, is_used=False).first()
+            if code_obj:
+                return Response({"message": "Invitation code verified"}, status=status.HTTP_200_OK)
+            else:
+                return Response({"error": "Invalid or already used invitation code"}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": f"Error verifying invitation code: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
