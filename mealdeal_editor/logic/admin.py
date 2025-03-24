@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import InvitationCode
+from .models import InvitationCode, PartnerApplication, Contact
 import random
 import string
 
@@ -34,4 +34,78 @@ class InvitationCodeAdmin(admin.ModelAdmin):
         }),
     )
 
+class PartnerApplicationAdmin(admin.ModelAdmin):
+    list_display = ('business_name', 'business_type', 'city', 'contact_name', 'email', 'status', 'created_at')
+    list_filter = ('status', 'business_type', 'city', 'created_at')
+    search_fields = ('business_name', 'contact_name', 'email', 'phone_number')
+    readonly_fields = ('created_at', 'updated_at')
+    
+    fieldsets = (
+        ('Business Information', {
+            'fields': ('business_name', 'business_type', 'address', 'city', 'status')
+        }),
+        ('Contact Information', {
+            'fields': ('contact_name', 'email', 'phone_number')
+        }),
+        ('Online Presence', {
+            'fields': ('website_url', 'instagram_url'),
+        }),
+        ('Additional Information', {
+            'fields': ('additional_info',),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    actions = ['approve_applications', 'reject_applications']
+    
+    def approve_applications(self, request, queryset):
+        updated = queryset.update(status='approved')
+        self.message_user(request, f"{updated} application(s) have been approved.")
+    approve_applications.short_description = "Mark selected applications as approved"
+    
+    def reject_applications(self, request, queryset):
+        updated = queryset.update(status='rejected')
+        self.message_user(request, f"{updated} application(s) have been rejected.")
+    reject_applications.short_description = "Mark selected applications as rejected"
+
+class ContactAdmin(admin.ModelAdmin):
+    list_display = ('name', 'email', 'subject', 'status', 'created_at')
+    list_filter = ('status', 'created_at')
+    search_fields = ('name', 'email', 'subject', 'message')
+    readonly_fields = ('created_at', 'updated_at')
+    
+    fieldsets = (
+        ('Contact Information', {
+            'fields': ('name', 'email')
+        }),
+        ('Message Details', {
+            'fields': ('subject', 'message')
+        }),
+        ('Admin Section', {
+            'fields': ('status', 'notes')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    actions = ['mark_as_in_progress', 'mark_as_resolved']
+    
+    def mark_as_in_progress(self, request, queryset):
+        updated = queryset.update(status='in_progress')
+        self.message_user(request, f"{updated} contact request(s) marked as in progress.")
+    mark_as_in_progress.short_description = "Mark selected contacts as in progress"
+    
+    def mark_as_resolved(self, request, queryset):
+        updated = queryset.update(status='resolved')
+        self.message_user(request, f"{updated} contact request(s) marked as resolved.")
+    mark_as_resolved.short_description = "Mark selected contacts as resolved"
+
 admin.site.register(InvitationCode, InvitationCodeAdmin)
+admin.site.register(PartnerApplication, PartnerApplicationAdmin)
+admin.site.register(Contact, ContactAdmin)
