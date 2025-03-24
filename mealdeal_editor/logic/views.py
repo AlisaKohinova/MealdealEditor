@@ -47,7 +47,7 @@ class FirebaseTokenView(APIView):
 
             #todo: change to secure=True in production
             response.set_cookie(key="refresh", value=str(refresh), httponly=True, secure=False, samesite="Lax", max_age=7 * 24 * 60 * 60)
-            response.set_cookie(key="access", value=str(refresh.access_token), httponly=True, secure=False, samesite="Lax", max_age=30 * 60) #todo 5 minutes
+            response.set_cookie(key="access", value=str(refresh.access_token), httponly=True, secure=False, samesite="Lax", max_age=60) #todo 5 minutes
 
             return response
 
@@ -75,7 +75,7 @@ class FirebaseLoginView(APIView):
             response = Response({"message": "Authenticated via Firebase"}, status=status.HTTP_200_OK)
 
             response.set_cookie(key="refresh", value=str(refresh), httponly=True, secure=False, samesite="Lax", max_age=7 * 24 * 60 * 60)
-            response.set_cookie(key="access", value=str(refresh.access_token), httponly=True, secure=False, samesite="Lax", max_age=30 * 60) #todo 5 minutes
+            response.set_cookie(key="access", value=str(refresh.access_token), httponly=True, secure=False, samesite="Lax", max_age=60) #todo 5 minutes
 
             return response
 
@@ -88,10 +88,11 @@ class FirebaseLogoutView(APIView):
         response.delete_cookie("refresh")
         response.delete_cookie("access")
         return response
-    
+
+
 class FirebaseRefreshView(APIView):
     def post(self, request):
-        refresh = request.data.get("refresh")
+        refresh = request.COOKIES.get("refresh")
         if not refresh:
             return Response({"error": "Refresh token is required"}, status=status.HTTP_400_BAD_REQUEST)
         try:
@@ -100,12 +101,13 @@ class FirebaseRefreshView(APIView):
 
             response = Response({"message": "Access token refreshed"}, status=status.HTTP_200_OK)
 
-            response.set_cookie(key="access", value=str(access), httponly=True, secure=False, samesite="Lax", max_age=30 * 60) #todo 5 minutes
+            response.set_cookie(key="access", value=str(access), httponly=True, secure=False, samesite="Lax", max_age=60) #todo 5 minutes
 
             return response
         except Exception as e:
             return Response({"error": "Refresh token is invalid"}, status=status.HTTP_401_UNAUTHORIZED)
-            
+
+
 class PartnerProfileView(APIView):
     permission_classes = [IsAuthenticated]
 
