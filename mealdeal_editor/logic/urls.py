@@ -2,10 +2,11 @@ from django.urls import path
 from .views import (
     FirebaseTokenView, FirebaseLoginView, FirebaseLogoutView, 
     FirebaseRefreshView, PartnerProfileView, VerifyInvitationCodeView,
-    PartnerApplyView, ContactView
+    PartnerApplyView, ContactView, HealthCheckView
 )
 
 urlpatterns = [
+    path('health/', HealthCheckView.as_view(), name='health-check'),
     path('auth/register/', FirebaseTokenView.as_view(), name='firebase-token'),
     path('auth/verify-invitation-code/', VerifyInvitationCodeView.as_view(), name='verify-invitation-code'),
     path('auth/login/', FirebaseLoginView.as_view(), name='firebase-login'),

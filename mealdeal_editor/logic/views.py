@@ -12,6 +12,10 @@ import firebase_admin.auth as firebase_auth
 
 # Create your views here.
 
+class HealthCheckView(APIView):
+    def get(self, request):
+        return Response({"status": "ok"}, status=status.HTTP_200_OK)
+
 class FirebaseTokenView(APIView):
     def post(self, request):
         firebase_id_token = request.data.get("firebase_id_token")
@@ -186,3 +190,28 @@ class ContactView(APIView):
                 "error": f"Failed to submit contact: {str(e)}"
             }, status=status.HTTP_400_BAD_REQUEST)
         
+
+class ProfileChangeEmailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        new_email = request.data.get("new_email")
+        access_token = request.COOKIES.get("access")
+        if not new_email:
+            return Response({"error": "New email is required"}, status=status.HTTP_400_BAD_REQUEST)
+        if not access_token:
+            return Response({"error": "Access token is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # Verify the access token
+            decoded_token = jwt.decode(access_token, settings.SECRET_KEY, algorithms=['HS256'])
+
+            # Update the user's email
+            user = User.objects.get(username=decoded_token.get("email", ""))
+            user.email = new_email
+            user.save()
+
+            return Response({"message": "Email updated successfully"}, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({"error": f"Failed to update email: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
